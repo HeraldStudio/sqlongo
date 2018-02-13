@@ -1,0 +1,23 @@
+{
+  "name": "sqlongo",
+  "version": "1.0.0",
+  "description": "Async sqlite3 API that uses like MongoDB.",
+  "main": "index.js",
+  "scripts": {
+    "test": "NODE_ENV=development node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/heraldstudio/sqlongo.git"
+  },
+  "author": "rikumi",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/heraldstudio/sqlongo/issues"
+  },
+  "homepage": "https://github.com/heraldstudio/sqlongo#readme",
+  "dependencies": {
+    "chalk": "^2.3.1",
+    "sqlite3": "^3.1.13"
+  }
+}
