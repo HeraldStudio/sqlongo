@@ -4,3 +4,4 @@ yarn.lock
 .idea/
 **/.DS_Store
 **/*.db
+yarn-error.log

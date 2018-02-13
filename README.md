@@ -24,7 +24,7 @@ Sqlongo 支持被其他模块调用，也支持交互式解释器（REPL）。�
 
 使用 `await db.tableName.define(schema)` 来定义一个表。
 
->  注意：在 REPL 中，所有异步方法不带 `await` 直接调用。
+> 注意：在 REPL 中，所有异步方法不带 `await` 直接调用。
 
 - 定义表本质上是 `create table if not exists` 语句；
 
@@ -90,6 +90,10 @@ await db.todo.insert({ content: 'Have a cup of coffee' })
 使用  `await db.tableName.update(criteria, row)` 将更改所有符合条件的数据，修改 `row` 中指定的列；`row` 中未指定的列将保持原状。
 
 **注意！** 与部分 MongoDB 解释器的行为不同的是，Sqlongo 更改数据默认不限条数，例如 `await db.todo.update({}, { content: '' })` 将会更改 `todo` 表中所有的行。为了降低危险性，此处 `criteria` 不设默认值，必须显式指定。
+
+### 原始查询
+
+使用  `await db.raw(sql, params)` 执行参数化的原始查询，其本质是 `sqlite3.Database.prototype.all()`，因此返回值始终是一个保存结果对象的数组。
 
 ## 安全性说明
 
