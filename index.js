@@ -57,7 +57,7 @@ const parseCriteria = (criteriaObject, schemaObject) => {
       let filteredCriterionKeys = filteredKeys(criterion, CRITERION_KEYS)
       filteredCriterionKeys.map(criterionKey => {
         if (Array.isArray(criterion[criterionKey])) {
-          let placeholders = criterion[criterionKey].join(', ')
+          let placeholders = criterion[criterionKey].map(k => '?').join(', ')
           criteria.push(`${column} ${CRITERION_KEYS[criterionKey]} (${placeholders})`)
           values = values.concat(criterion[criterionKey])
         } else {
@@ -74,9 +74,19 @@ const parseCriteria = (criteriaObject, schemaObject) => {
 }
 
 // ORM
-// 安全性：只需要开发者保证表名和表结构不受用户控制；除标明和表结构外的动态属性均进行了参数化处理
+// 安全性：只需要开发者保证表名和表结构不受用户控制；除表名和表结构外的动态属性均进行了参数化处理
 const Sqlongo = function (databaseName) {
-  db = new sqlite(databaseName ? Sqlongo.defaults.path + databaseName + '.db' : ':memory:')
+  if (!databaseName) {
+    databaseName = ':memory:'
+  } else {
+    if (!/\.db$/.test(databaseName)) {
+      databaseName += '.db'
+    }
+    let path = Sqlongo.defaults.path.replace(/^(.+)\/?$/, '$1/')
+    databaseName = path + databaseName.replace(/^\//, '')
+  }
+  db = new sqlite(databaseName)
+
   let schemas = {}
   return new Proxy ({}, {
     set (_, table, schema) {
@@ -206,8 +216,10 @@ if (require.main === module) {
   const vm = require('vm')
   const repl = require('repl')
   const chalk = require('chalk')
-  const ctx = { db: null }
+  const ctx = { db: new Sqlongo() }
   vm.createContext(ctx)
+
+  process.on('unhandledRejection', e => { throw e })
 
   const isRecoverableError = (error) => {
     if (error.name === 'SyntaxError') {
@@ -216,8 +228,11 @@ if (require.main === module) {
     return false
   }
 
+  console.log('\nUsing in-memory temporary database by default.')
+  console.log('Type ' + chalk.blue('use [filename]') + ' to open or create a database.')
+
   repl.start({
-    prompt: chalk.blue('\nsqlongo> '),
+    prompt: '\nsqlongo> ',
     eval: async (cmd, context, filename, callback) => {
       if (/^use\s+(\S+)$/.test(cmd.trim())) {
         let name = RegExp.$1

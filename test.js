@@ -26,9 +26,12 @@ const runTest = async () => {
   silent(await db.test1.remove({ id: { $gt: 2 } }, 1))
   assert(await db.test1.count(), k => k === 3)
 
-  silent(await db.test1.remove({ id: 1 }))
+  silent(await db.test1.remove({ id: { $ne: 2 } }, 1))
   assert(await db.test1.find(), k => k.length === 2)
   assert(await db.test1.find({}, 1), k => k.id === 2 && /5$/.test(k.content))
+
+  silent(await db.test1.insert({ content: 'Hello, World! 3' }))
+  assert(await db.test1.find({ id: { $in: [3, 4, 5] } }), k => k.length === 2)
 }
 
 runTest()
