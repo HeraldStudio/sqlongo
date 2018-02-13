@@ -76,27 +76,11 @@ const parseCriteria = (criteriaObject, schemaObject) => {
 // ORM
 // 安全性：只需要开发者保证表名和表结构不受用户控制；除标明和表结构外的动态属性均进行了参数化处理
 const Sqlongo = function (databaseName) {
-  db = new sqlite(Sqlongo.defaults.path + databaseName + '.db')
+  db = new sqlite(databaseName ? Sqlongo.defaults.path + databaseName + '.db' : ':memory:')
   let schemas = {}
   return new Proxy ({}, {
     set (_, table, schema) {
-      if (typeof schema !== 'object') {
-        throw new Error(`db.${table}: schema must be an object`)
-      }
-
-      // 缓存表结构，以便后续做列名判断
-      schemas[table] = schema
-
-      // 此处由于是 Proxy 的赋值方法，无法 await，将不会等待建表完成
-      // 因此需要保证所有对表的增删改查操作前有足够的 IO 等待时间（即增删改查放在路由处理中），以便等待建表完成
-      /* await */ db.run(`
-        create table if not exists ${table} (
-          ${Object.keys(schema).map(k => k + ' ' + schema[k]).join(', ')}
-        )
-      `).then(() => {
-        schemas[table][READY_KEY] = true
-      })
-      return true
+      return false
     },
     get (_, key) {
       if (typeof key === 'symbol'
@@ -109,14 +93,64 @@ const Sqlongo = function (databaseName) {
       }
 
       let table = key
-      if (!schemas.hasOwnProperty(table)) {
-        throw new Error(`db.${table} is called before setting its schema`)
+
+      let checkAvailability = () => {
+        if (!schemas.hasOwnProperty(table)) {
+          throw new Error(`db.${table} is called before setting its schema`)
+        }
+        if (!schemas[table][READY_KEY]) {
+          throw new Error(`db.${table} is called before its schema is fully synchronized with database`)
+        }
       }
-      if (!schemas[table][READY_KEY]) {
-        throw new Error(`db.${table} is called before its schema is fully synchronized with database`)
-      }
+
       return {
+        async define(schema) {
+          if (typeof schema !== 'object') {
+            throw new Error(`db.${table}: schema must be an object`)
+          }
+          schemas[table] = schema
+
+          let result = await db.run(`
+            create table if not exists ${table} (
+              ${Object.keys(schema).map(k => k + ' ' + schema[k]).join(', ')}
+            )
+          `)
+          schemas[table][READY_KEY] = true
+          return result
+        },
+        async find(criteriaObj = {}, limit = -1, offset = 0) {
+          checkAvailability()
+          if (typeof criteriaObj !== 'object') {
+            throw new Error(`find: criteria should be an object`)
+          }
+          let [criteria, values] = parseCriteria(criteriaObj, schemas[table])
+          criteria = criteria && `where (${criteria})`
+          return await (limit === 1 ? db.get : db.all).call(db, `
+            select * from ${table} ${criteria} limit ? offset ?
+          `, values.concat([limit, offset]))
+        },
+        async count(criteriaObj = {}) {
+          checkAvailability()
+          if (typeof criteriaObj !== 'object') {
+            throw new Error(`count: criteria should be an object`)
+          }
+          let [criteria, values] = parseCriteria(criteriaObj, schemas[table])
+          criteria = criteria && `where (${criteria})`
+          return (await db.get(`
+            select count(*) count from ${table} ${criteria}
+          `, values)).count
+        },
+        async distinct(column, limit = -1, offset = 0) {
+          checkAvailability()
+          if (!Object.keys(schemas[table]).indexOf(column)) {
+            throw new Error(`distinct: column ${column} does not exist`)
+          }
+          return (await (limit === 1 ? db.get : db.all).call(db, `
+            select distinct ${column} from ${table} limit ? offset ?
+          `, [limit, offset])).map(k => k[column])
+        },
         async insert(row) {
+          checkAvailability()
           if (typeof row !== 'object') {
             throw new Error(`insert: row should be an object`)
           }
@@ -130,17 +164,19 @@ const Sqlongo = function (databaseName) {
             insert into ${table}(${keys}) values(${placeholders})
           `, values)
         },
-        async remove(criteriaObj) {
+        async remove(criteriaObj, limit = -1, offset = 0) {
+          checkAvailability()
           if (typeof criteriaObj !== 'object') {
             throw new Error(`remove: criteria should be an object`)
           }
           let [criteria, values] = parseCriteria(criteriaObj, schemas[table])
           criteria = criteria && `where (${criteria})`
           return await db.run(`
-            delete from ${table} ${criteria}
-          `, values)
+            delete from ${table} where rowid in (select rowid from ${table} ${criteria} limit ? offset ?)
+          `, values.concat([limit, offset]))
         },
         async update(criteriaObj, row) {
+          checkAvailability()
           if (typeof criteriaObj !== 'object') {
             throw new Error(`update: criteria should be an object`)
           }
@@ -157,16 +193,6 @@ const Sqlongo = function (databaseName) {
           return await db.run(`
             update ${table} set ${operations} ${criteria}
           `, values.concat(criteriaValues))
-        },
-        async find(criteriaObj = {}, limit = -1, offset = 0) {
-          if (typeof criteriaObj !== 'object') {
-            throw new Error(`find: criteria should be an object`)
-          }
-          let [criteria, values] = parseCriteria(criteriaObj, schemas[table])
-          criteria = criteria && `where (${criteria})`
-          return await (limit === 1 ? db.get : db.all).call(db, `
-            select * from ${table} ${criteria} limit ? offset ?
-          `, values.concat([limit, offset]))
         }
       }
     }

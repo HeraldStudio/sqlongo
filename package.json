@@ -4,7 +4,7 @@
   "description": "Async sqlite3 API that uses like MongoDB.",
   "main": "index.js",
   "scripts": {
-    "test": "NODE_ENV=development node index.js"
+    "test": "NODE_ENV=development node test.js"
   },
   "repository": {
     "type": "git",
