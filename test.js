@@ -7,8 +7,10 @@ const runTest = async () => {
   let Sqlongo = require('./index')
   let db = new Sqlongo()
 
+  db.test = ({ id: 'int primary key', content: 'text' })
+
   await db.test1.define({
-    id: 'integer primary key not null',
+    id: 'integer primary key',
     content: 'varchar(100)'
   })
 

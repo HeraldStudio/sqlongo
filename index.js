@@ -88,9 +88,13 @@ const Sqlongo = function (databaseName) {
   db = new sqlite(databaseName)
 
   let schemas = {}
-  return new Proxy ({}, {
+  let proxy = new Proxy ({}, {
     set (_, table, schema) {
-      return false
+      if (typeof schema !== 'object') {
+        throw new Error(`db.${table}: schema must be an object`)
+      }
+      /* noawait */proxy[table].define(schema)
+      return true
     },
     get (_, key) {
       if (typeof key === 'symbol'
@@ -207,6 +211,7 @@ const Sqlongo = function (databaseName) {
       }
     }
   })
+  return proxy
 }
 
 Sqlongo.defaults = { path: '' }

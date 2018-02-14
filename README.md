@@ -36,10 +36,18 @@ Sqlongo 支持被其他模块调用，也支持交互式解释器（REPL）。�
 
   ```javascript
   await db.todo.define({
-    id: 'integer primary key',
-    content: 'varchar(100)'
+    id: 'int primary key',
+    content: 'text'
   })
   ```
+
+### 异步定义表
+
+如果开发者可以保证建表语句后有足够的 I/O 时间等待建表完成（例如，在服务器开始运行时建表，当请求到来时再使用表），可以直接使用 `db.tableName = schema` 来定义表。
+
+这种方法与 `db.tableName.define(schema)`（不带 `await`）等价。
+
+建表语句执行未完成时，数据表处于准备状态，该状态下不允许对数据表进行操作。
 
 ### 查找数据
 
