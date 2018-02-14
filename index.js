@@ -98,7 +98,7 @@ const Sqlongo = function (databaseName) {
     },
     get (_, key) {
       if (typeof key === 'symbol'
-        || ['inspect', 'valueOf', 'toString', '__proto__'].indexOf(key) + 1) {
+        || ['inspect', 'valueOf', 'toString', '__proto__', 'hasOwnProperty'].indexOf(key) + 1) {
         return schemas[key]
       }
 
