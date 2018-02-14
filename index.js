@@ -85,7 +85,7 @@ const Sqlongo = function (databaseName) {
     let path = Sqlongo.defaults.path.replace(/^(.+)\/?$/, '$1/')
     databaseName = path + databaseName.replace(/^\//, '')
   }
-  db = new sqlite(databaseName)
+  const db = new sqlite(databaseName)
 
   let schemas = {}
   let proxy = new Proxy ({}, {
