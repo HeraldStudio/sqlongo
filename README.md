@@ -60,7 +60,6 @@ Sqlongo 支持被其他模块调用，也支持交互式解释器（REPL）。�
   await db.todo.find({ id: { $gt: 10 } }) // where id > 10
   await db.todo.find({ id: { $lt: 20 } }) // where id < 20
   await db.todo.find({ id: { $gte: 10, $lte: 20 } })
-  await db.todo.find({ id: { $gte: 10, $lte: 20 } })
   await db.todo.find({ id: { $in: [10, 20, 30] } })
   await db.todo.find({ content: { $like: '% github %' } })
 
