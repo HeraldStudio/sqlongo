@@ -154,14 +154,19 @@ const Sqlongo = function (databaseName) {
             select count(*) count from ${table} ${criteria}
           `, values)).count
         },
-        async distinct(column, limit = -1, offset = 0) {
+        async distinct(column, criteriaObj = {}, limit = -1, offset = 0) {
           checkAvailability()
+          if (typeof criteriaObj !== 'object') {
+            throw new Error(`count: criteria should be an object`)
+          }
           if (!Object.keys(schemas[table]).indexOf(column)) {
             throw new Error(`distinct: column ${column} does not exist`)
           }
+          let [criteria, values] = parseCriteria(criteriaObj, schemas[table])
+          criteria = criteria && `where (${criteria})`
           return (await (limit === 1 ? db.get : db.all).call(db, `
-            select distinct ${column} from ${table} limit ? offset ?
-          `, [limit, offset])).map(k => k[column])
+            select distinct ${column} from ${table} ${criteria} limit ? offset ?
+          `, values.concat([limit, offset]))).map(k => k[column])
         },
         async insert(row) {
           checkAvailability()

@@ -76,7 +76,7 @@ Sqlongo 支持被其他模块调用，也支持交互式解释器（REPL）。�
 
 ### 单列去重
 
-使用 `await db.tableName.distinct(column)` 得到列 `column` 的所有值的去重结果。
+使用 `await db.tableName.distinct(column, criteria, limit, offset)` 得到列 `column` 的符合条件值的去重结果。
 
 ### 插入数据
 
