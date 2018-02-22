@@ -145,6 +145,10 @@ const Sqlongo = function (databaseName) {
         },
         async count(column = '*', criteriaObj = {}) {
           checkAvailability()
+          if (typeof column === 'object') {
+            criteriaObj = column
+            column = '*'
+          }
           if (typeof criteriaObj !== 'object') {
             throw new Error(`count: criteria should be an object`)
           }
