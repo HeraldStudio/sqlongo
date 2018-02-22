@@ -72,7 +72,7 @@ Sqlongo 支持被其他模块调用，也支持交互式解释器（REPL）。�
 
 ### 数据计数
 
-使用 `await db.tableName.count(criteria)` 得到符合条件的数据条数。此处 `criteria` 同样有默认值`{}`（无条件）
+使用 `await db.tableName.count(column, criteria)` 得到符合条件的去重条数；column 默认为 `*`。此处 `criteria` 同样有默认值`{}`（无条件）
 
 ### 单列去重
 
