@@ -40,11 +40,7 @@ const CRITERION_KEYS = {
 const filteredKeys = (untrustedObject, trustedObject) => {
   let trustedKeys = Object.keys(trustedObject)
   let untrustedKeys = Object.keys(untrustedObject)
-  let untrustedKey = untrustedKeys.find(k => trustedKeys.indexOf(k) === -1)
-  if (untrustedKey) {
-    throw new Error(`no such column: ${untrustedKey}`)
-  }
-  return untrustedKeys
+  return untrustedKeys.filter(k => trustedKeys.indexOf(k) !== -1)
 }
 
 // 高级条件的解析，类似于 MongoSqlongo
