@@ -1,28 +1,31 @@
-const { Database: sqlite } = require('sqlite3')
+const { Database } = require('sqlite3')
 
-// 对 Database 异步函数进行 async 封装
-;['run', 'get', 'all'].map (k => {
-  [sqlite.prototype['_' + k], sqlite.prototype[k]]
-    = [sqlite.prototype[k], function(sql, param) {
-      return new Promise((resolve, reject) => {
-        sql = sql.trim().replace(/\s+/g, ' ')
-        param = param || []
-        if (require.main === module) {
-          const chalk = require('chalk')
-          let log = chalk.cyan('query: ') + sql
-          for (let p of param) {
-            log = log.replace('?', chalk.magenta(`{{ ${p} }}`))
-          }
-          console.log('\n' + log)
-        }
-        this['_' + k](sql, param, (err, res) => {
-          err ? reject(err) : resolve(res)
-        })
+class AsyncDatabase extends Database {
+  async run (sql, param = []) {
+    return new Promise((resolve, reject) =>
+      super.run(sql, param, (err, res) => {
+        err ? reject(err) : resolve(res)
       })
-    }]
-})
+    )
+  }
+  async get (sql, param = []) {
+    return new Promise((resolve, reject) =>
+      super.get(sql, param, (err, res) => {
+        err ? reject(err) : resolve(res)
+      })
+    )
+  }
+  async all (sql, param = []) {
+    return new Promise((resolve, reject) =>
+      super.all(sql, param, (err, res) => {
+        err ? reject(err) : resolve(res)
+      })
+    )
+  }
+}
 
-const READY_KEY = '__ready__'
+const READY_KEY = Symbol('ready')
+const CALLBACKS_KEY = Symbol('callbacks')
 const CRITERION_KEYS = {
   $like: 'like',
   $glob: 'glob',
@@ -43,7 +46,7 @@ const filteredKeys = (untrustedObject, trustedObject) => {
   return untrustedKeys.filter(k => trustedKeys.indexOf(k) !== -1)
 }
 
-// 高级条件的解析，类似于 MongoSqlongo
+// 高级条件的解析，类似于 Mongo
 const parseCriteria = (criteriaObject, schemaObject) => {
   let keys = filteredKeys(criteriaObject, schemaObject)
   let criteria = [], values = []
@@ -81,7 +84,7 @@ const Sqlongo = function (databaseName) {
     let path = Sqlongo.defaults.path.replace(/^(.+)\/?$/, '$1/')
     databaseName = path + databaseName.replace(/^\//, '')
   }
-  const db = new sqlite(databaseName)
+  const db = new AsyncDatabase(databaseName)
 
   let schemas = {}
   let proxy = new Proxy ({}, {
@@ -109,7 +112,10 @@ const Sqlongo = function (databaseName) {
           throw new Error(`db.${table} is called before setting its schema`)
         }
         if (!schemas[table][READY_KEY]) {
-          throw new Error(`db.${table} is called before its schema is fully synchronized with database`)
+          throw new Error(`db.${table} is called before its schema is fully `
+            + `synchronized with database. Use 'await db.${table}.ready()' to `
+            + `wait for the synchronization to complete, or replace the schema `
+            + `definition with 'await db.${table}.define({ ...schema })'.`)
         }
       }
 
@@ -118,6 +124,8 @@ const Sqlongo = function (databaseName) {
           if (typeof schema !== 'object') {
             throw new Error(`db.${table}: schema must be an object`)
           }
+          schema[READY_KEY] = false
+          schema[CALLBACKS_KEY] = []
           schemas[table] = schema
 
           let result = await db.run(`
@@ -126,7 +134,15 @@ const Sqlongo = function (databaseName) {
             )
           `)
           schemas[table][READY_KEY] = true
+          schemas[table][CALLBACKS_KEY].map(k => k())
+          delete schemas[table][CALLBACKS_KEY]
           return result
+        },
+        async ready() {
+          if (schemas[table][READY_KEY]) {
+            return
+          }
+          return await new Promise(res => schemas[table][CALLBACKS_KEY].push(res))
         },
         async find(criteriaObj = {}, limit = -1, offset = 0) {
           checkAvailability()

@@ -7,13 +7,17 @@ const runTest = async () => {
   let Sqlongo = require('./index')
   let db = new Sqlongo()
 
-  db.test = ({ id: 'int primary key', content: 'text' })
-
-  await db.test1.define({
-    id: 'integer primary key',
-    content: 'varchar(100)'
+  await db.test.define({
+    id: 'int primary key',
+    content: 'text'
   })
 
+  db.test1 = {
+    id: 'integer primary key',
+    content: 'varchar(100)'
+  }
+
+  await db.test1.ready()
   assert(await db.test1.find(), k => k.length === 0)
 
   silent(await db.test1.insert({ content: 'Hello, World! 1' }))
@@ -34,6 +38,7 @@ const runTest = async () => {
 
   silent(await db.test1.insert({ content: 'Hello, World! 3' }))
   assert(await db.test1.find({ id: { $in: [3, 4, 5] } }), k => k.length === 2)
+  console.log('Passed.')
 }
 
 runTest()
