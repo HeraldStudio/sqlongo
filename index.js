@@ -24,6 +24,8 @@ class AsyncDatabase extends Database {
   }
 }
 
+exports.AsyncDatabase = AsyncDatabase
+
 const READY_KEY = Symbol('ready')
 const CALLBACKS_KEY = Symbol('callbacks')
 const CRITERION_KEYS = {
