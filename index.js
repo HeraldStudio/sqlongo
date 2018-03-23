@@ -24,8 +24,6 @@ class AsyncDatabase extends Database {
   }
 }
 
-exports.AsyncDatabase = AsyncDatabase
-
 const READY_KEY = Symbol('ready')
 const CALLBACKS_KEY = Symbol('callbacks')
 const CRITERION_KEYS = {
@@ -242,6 +240,7 @@ const Sqlongo = function (databaseName) {
 
 Sqlongo.defaults = { path: '' }
 module.exports = Sqlongo
+module.exports.AsyncDatabase = AsyncDatabase
 
 if (require.main === module) {
   const vm = require('vm')
