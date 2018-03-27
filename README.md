@@ -22,9 +22,7 @@ Sqlongo 支持被其他模块调用，也支持交互式解释器（REPL）。�
 
 ### 定义表
 
-使用 `await db.tableName.define(schema)` 来定义一个表。
-
-> 注意：在 REPL 中，所有异步方法不带 `await` 直接调用。
+使用 `db.tableName = <schema>` 来定义一个表。
 
 - 定义表本质上是 `create table if not exists` 语句；
 
@@ -35,19 +33,11 @@ Sqlongo 支持被其他模块调用，也支持交互式解释器（REPL）。�
 - `schema` 为表结构对象，用列名作为 `key`，类型属性作为对应的 `value`，例如：
 
   ```javascript
-  await db.todo.define({
+  db.todo = {
     id: 'int primary key',
     content: 'text'
-  })
+  }
   ```
-
-### 异步定义表
-
-如果开发者可以保证建表语句后有足够的 I/O 时间等待建表完成（例如，在服务器开始运行时建表，当请求到来时再使用表），可以直接使用 `db.tableName = schema` 来定义表。
-
-这种方法与 `db.tableName.define(schema)`（不带 `await`）等价。
-
-建表语句执行未完成时，数据表处于准备状态，该状态下不允许对数据表进行操作。
 
 ### 查找数据
 
