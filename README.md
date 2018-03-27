@@ -24,9 +24,11 @@ Sqlongo 支持被其他模块调用，也支持交互式解释器（REPL）。�
 
 使用 `db.tableName = <schema>` 来定义一个表。
 
-- 定义表本质上是 `create table if not exists` 语句；
+- 定义表本质上是异步的 `create table if not exists` 语句；
 
 - 为了保证 SQL 安全，在每个 `db` 实例中都需要先定义表，才能对对应的表进行增删改查操作；
+
+- 实现细节层面上，定义表语句执行后的第一次增删改查操作开始时，若异步定义表还未完成，sqlongo 将自动先等待定义表完成，再开始相应的增删改查操作；(v1.2.0 新增特性，原有 `await db.tableName.define` API 也相应删除)
 
 - `tableName` 为表名，可任意指定；
 
