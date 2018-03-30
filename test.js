@@ -11,9 +11,8 @@ const runTest = async () => {
     id: 'integer primary key',
     content: 'text'
   }
-
-  assert(await db.test1.find(), k => k.length === 0)
-
+  assert(await db.raw(`select * from test1`), k => k.length === 0)
+  
   silent(await db.test1.insert({ content: 'Hello, World! 1' }))
   silent(await db.test1.insert({ content: 'Hello, World! 2' }))
   assert(await db.test1.distinct('content', { content: { $like: '%2' }}), k => k.length === 1)

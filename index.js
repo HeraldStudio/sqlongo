@@ -24,8 +24,6 @@ class AsyncDatabase extends Database {
   }
 }
 
-const READY_KEY = Symbol('ready')
-const CALLBACKS_KEY = Symbol('callbacks')
 const CRITERION_KEYS = {
   $like: 'like',
   $glob: 'glob',
@@ -85,26 +83,20 @@ const Sqlongo = function (databaseName) {
     databaseName = path + databaseName.replace(/^\//, '')
   }
   const db = new AsyncDatabase(databaseName)
-
+  let createTableTasks = Promise.resolve()
   let schemas = {}
   let proxy = new Proxy ({}, {
     set (_, table, schema) {
       if (typeof schema !== 'object') {
         throw new Error(`db.${table}: schema must be an object`)
       }
-      schema[READY_KEY] = false
-      schema[CALLBACKS_KEY] = []
       schemas[table] = schema
 
-      /* no-await */ db.run(`
+      createTableTasks = Promise.all([createTableTasks, db.run(`
         create table if not exists ${table} (
           ${Object.keys(schema).map(k => k + ' ' + schema[k]).join(', ')}
         )
-      `).then(() => {
-        schemas[table][READY_KEY] = true
-        schemas[table][CALLBACKS_KEY].map(k => k())
-        delete schemas[table][CALLBACKS_KEY]
-      })
+      `)])
       return true
     },
     get (_, key) {
@@ -113,30 +105,17 @@ const Sqlongo = function (databaseName) {
       }
 
       if (key === 'raw') {
-        return db.all.bind(db)
+        return async (sql, params) => {
+          await createTableTasks
+          return await db.all(sql, params)
+        }
       }
 
       let table = key
 
-      const ready = async () => {
-        if (schemas[table][READY_KEY]) {
-          return
-        }
-        await new Promise(res => schemas[table][CALLBACKS_KEY].push(res))
-      }
-
-      const checkAvailability = async () => {
-        if (!schemas.hasOwnProperty(table)) {
-          throw new Error(`db.${table} is called before setting its schema`)
-        }
-        if (!schemas[table][READY_KEY]) {
-          await ready()
-        }
-      }
-
       return {
         async find(criteriaObj = {}, limit = -1, offset = 0) {
-          await checkAvailability()
+          await createTableTasks
           if (typeof criteriaObj !== 'object') {
             throw new Error(`find: criteria should be an object`)
           }
@@ -147,7 +126,7 @@ const Sqlongo = function (databaseName) {
           `, values.concat([limit, offset]))
         },
         async count(column = '*', criteriaObj = {}) {
-          await checkAvailability()
+          await createTableTasks
           if (typeof column === 'object') {
             criteriaObj = column
             column = '*'
@@ -165,7 +144,7 @@ const Sqlongo = function (databaseName) {
           `, values)).count
         },
         async distinct(column, criteriaObj = {}, limit = -1, offset = 0) {
-          await checkAvailability()
+          await createTableTasks
           if (typeof criteriaObj !== 'object') {
             throw new Error(`distinct: criteria should be an object`)
           }
@@ -179,7 +158,7 @@ const Sqlongo = function (databaseName) {
           `, values.concat([limit, offset]))).map(k => k[column])
         },
         async insert(row) {
-          await checkAvailability()
+          await createTableTasks
           if (typeof row !== 'object') {
             throw new Error(`insert: row should be an object`)
           }
@@ -194,7 +173,7 @@ const Sqlongo = function (databaseName) {
           `, values)
         },
         async remove(criteriaObj, limit = -1, offset = 0) {
-          await checkAvailability()
+          await createTableTasks
           if (typeof criteriaObj !== 'object') {
             throw new Error(`remove: criteria should be an object`)
           }
@@ -205,7 +184,7 @@ const Sqlongo = function (databaseName) {
           `, values.concat([limit, offset]))
         },
         async update(criteriaObj, row) {
-          await checkAvailability()
+          await createTableTasks
           if (typeof criteriaObj !== 'object') {
             throw new Error(`update: criteria should be an object`)
           }
