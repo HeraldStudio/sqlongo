@@ -2,6 +2,8 @@
 
 长得最像 MongoDB 的 Sqlite3 ORM
 
+![Travis CI](https://img.shields.io/travis/HeraldStudio/sqlongo.svg?style=flat-square) ![License](https://img.shields.io/github/license/HeraldStudio/sqlongo.svg?style=flat-square) ![npm](https://img.shields.io/npm/v/sqlongo.svg?style=flat-square) ![npm](https://img.shields.io/npm/dt/sqlongo.svg?style=flat-square)
+
 ## 安装
 
 ```bash
