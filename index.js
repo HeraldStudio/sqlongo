@@ -41,7 +41,7 @@ const CRITERION_KEYS = {
 const filteredKeys = (untrustedObject, trustedObject) => {
   let trustedKeys = Object.keys(trustedObject)
   let untrustedKeys = Object.keys(untrustedObject)
-  return untrustedKeys.filter(k => trustedKeys.indexOf(k) !== -1)
+  return untrustedKeys.filter(k => ~trustedKeys.indexOf(k))
 }
 
 // 高级条件的解析，类似于 Mongo
@@ -134,7 +134,7 @@ const Sqlongo = function (databaseName) {
           if (typeof criteriaObj !== 'object') {
             throw new Error(`count: criteria should be an object`)
           }
-          if (column !== '*' && !Object.keys(schemas[table]).indexOf(column)) {
+          if (column !== '*' && !~Object.keys(schemas[table]).indexOf(column)) {
             throw new Error(`count: column ${column} does not exist`)
           }
           let [criteria, values] = parseCriteria(criteriaObj, schemas[table])
@@ -148,7 +148,7 @@ const Sqlongo = function (databaseName) {
           if (typeof criteriaObj !== 'object') {
             throw new Error(`distinct: criteria should be an object`)
           }
-          if (!Object.keys(schemas[table]).indexOf(column)) {
+          if (!~Object.keys(schemas[table]).indexOf(column)) {
             throw new Error(`distinct: column ${column} does not exist`)
           }
           let [criteria, values] = parseCriteria(criteriaObj, schemas[table])
