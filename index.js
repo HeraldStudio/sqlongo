@@ -119,7 +119,11 @@ const Sqlongo = function (databaseName) {
           if (typeof criteriaObj !== 'object') {
             throw new Error(`find: criteria should be an object`)
           }
-          let [criteria, values] = parseCriteria(criteriaObj, schemas[table])
+          let schema = schemas[table]
+          if (!schema) {
+            throw new Error(`find: schema of ${table} not defined`)
+          }
+          let [criteria, values] = parseCriteria(criteriaObj, schema)
           criteria = criteria && `where (${criteria})`
           return await (limit === 1 ? db.get : db.all).call(db, `
             select * from ${table} ${criteria} limit ? offset ?
@@ -134,10 +138,14 @@ const Sqlongo = function (databaseName) {
           if (typeof criteriaObj !== 'object') {
             throw new Error(`count: criteria should be an object`)
           }
-          if (column !== '*' && !~Object.keys(schemas[table]).indexOf(column)) {
+          let schema = schemas[table]
+          if (!schema) {
+            throw new Error(`count: schema of ${table} not defined`)
+          }
+          if (column !== '*' && !~Object.keys(schema).indexOf(column)) {
             throw new Error(`count: column ${column} does not exist`)
           }
-          let [criteria, values] = parseCriteria(criteriaObj, schemas[table])
+          let [criteria, values] = parseCriteria(criteriaObj, schema)
           criteria = criteria && `where (${criteria})`
           return (await db.get(`
             select count(${column}) count from ${table} ${criteria}
@@ -148,10 +156,14 @@ const Sqlongo = function (databaseName) {
           if (typeof criteriaObj !== 'object') {
             throw new Error(`distinct: criteria should be an object`)
           }
-          if (!~Object.keys(schemas[table]).indexOf(column)) {
+          let schema = schemas[table]
+          if (!schema) {
+            throw new Error(`distinct: schema of ${table} not defined`)
+          }
+          if (!~Object.keys(schema).indexOf(column)) {
             throw new Error(`distinct: column ${column} does not exist`)
           }
-          let [criteria, values] = parseCriteria(criteriaObj, schemas[table])
+          let [criteria, values] = parseCriteria(criteriaObj, schema)
           criteria = criteria && `where (${criteria})`
           return (await (limit === 1 ? db.get : db.all).call(db, `
             select distinct ${column} from ${table} ${criteria} limit ? offset ?
@@ -162,8 +174,12 @@ const Sqlongo = function (databaseName) {
           if (typeof row !== 'object') {
             throw new Error(`insert: row should be an object`)
           }
+          let schema = schemas[table]
+          if (!schema) {
+            throw new Error(`insert: schema of ${table} not defined`)
+          }
 
-          let keys = filteredKeys(row, schemas[table])
+          let keys = filteredKeys(row, schema)
           let values = keys.map(k => row[k])
           let placeholders = keys.map(k => '?').join(', ')
           keys = keys.join(', ')
@@ -177,7 +193,11 @@ const Sqlongo = function (databaseName) {
           if (typeof criteriaObj !== 'object') {
             throw new Error(`remove: criteria should be an object`)
           }
-          let [criteria, values] = parseCriteria(criteriaObj, schemas[table])
+          let schema = schemas[table]
+          if (!schema) {
+            throw new Error(`remove: schema of ${table} not defined`)
+          }
+          let [criteria, values] = parseCriteria(criteriaObj, schema)
           criteria = criteria && `where (${criteria})`
           return await db.run(`
             delete from ${table} where rowid in (select rowid from ${table} ${criteria} limit ? offset ?)
@@ -191,10 +211,14 @@ const Sqlongo = function (databaseName) {
           if (typeof row !== 'object') {
             throw new Error(`update: row should be an object`)
           }
-          let [criteria, criteriaValues] = parseCriteria(criteriaObj, schemas[table])
+          let schema = schemas[table]
+          if (!schema) {
+            throw new Error(`update: schema of ${table} not defined`)
+          }
+          let [criteria, criteriaValues] = parseCriteria(criteriaObj, schema)
           criteria = criteria && `where (${criteria})`
 
-          let keys = filteredKeys(row, schemas[table])
+          let keys = filteredKeys(row, schema)
           let values = keys.map(k => row[k])
           let operations = keys.map(k => `${k} = ?`).join(', ')
 
