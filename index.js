@@ -148,7 +148,7 @@ const Sqlongo = function (databaseName) {
           let [criteria, values] = parseCriteria(criteriaObj, schema)
           criteria = criteria && `where (${criteria})`
           return (await db.get(`
-            select count(${column}) count from ${table} ${criteria}
+            select count(${column === '*' ? '*' : `distinct(${column})`}) count from ${table} ${criteria}
           `, values)).count
         },
         async distinct(column, criteriaObj = {}, limit = -1, offset = 0) {
