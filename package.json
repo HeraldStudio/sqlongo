@@ -1,6 +1,6 @@
 {
   "name": "sqlongo",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Async sqlite3 API that uses like MongoDB.",
   "main": "index.js",
   "scripts": {
