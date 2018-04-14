@@ -37,11 +37,16 @@ const CRITERION_KEYS = {
   $in: 'in'
 }
 
+// 判断 key 是否为合法列名
+const filterKey = (untrustedKey, trustedObject) => {
+  let trustedKeys = Object.keys(trustedObject).concat('rowid')
+  return ~trustedKeys.indexOf(untrustedKey)
+}
+
 // 将传入的 object 的 key 进行筛选，留下表结构中存在的 key，防止通过路由对象传参进行 SQL 注入
 const filteredKeys = (untrustedObject, trustedObject) => {
-  let trustedKeys = Object.keys(trustedObject)
   let untrustedKeys = Object.keys(untrustedObject)
-  return untrustedKeys.filter(k => ~trustedKeys.indexOf(k))
+  return untrustedKeys.filter(k => filterKey(k, trustedObject))
 }
 
 // 高级条件的解析，类似于 Mongo
@@ -114,7 +119,7 @@ const Sqlongo = function (databaseName) {
       let table = key
 
       return {
-        async find(criteriaObj = {}, limit = -1, offset = 0) {
+        async find(criteriaObj = {}, limit = -1, offset = 0, orderBy = '') {
           await createTableTasks
           if (typeof criteriaObj !== 'object') {
             throw new Error(`find: criteria should be an object`)
@@ -124,9 +129,14 @@ const Sqlongo = function (databaseName) {
             throw new Error(`find: schema of ${table} not defined`)
           }
           let [criteria, values] = parseCriteria(criteriaObj, schema)
+          let order = /-$/.test(orderBy) ? 'desc' : 'asc'
+          orderBy = orderBy.replace(/[+-]$/, '') || 'rowid'
+          if (!filterKey(orderBy, schema)) {
+            throw new Error(`find: unknown column ${orderBy}`)
+          }
           criteria = criteria && `where (${criteria})`
           return await (limit === 1 ? db.get : db.all).call(db, `
-            select * from ${table} ${criteria} limit ? offset ?
+            select * from ${table} ${criteria} order by ${orderBy} ${order} limit ? offset ?
           `, values.concat([limit, offset]))
         },
         async count(column = '*', criteriaObj = {}) {

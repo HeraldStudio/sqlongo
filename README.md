@@ -47,7 +47,7 @@ Sqlongo 支持被其他模块调用，也支持交互式解释器（REPL）。�
 
 ### 查找数据
 
-使用 `await db.tableName.find(criteria, limit, offset)` 查找符合条件的数据。
+使用 `await db.tableName.find(criteria, limit, offset, orderBy)` 查找符合条件的数据。
 
 - `criteria` 是条件对象，默认值为`{}`（无条件），与 MongoDB 类似，用列名作为 `key`，匹配值作为对应的 `value`；若非精确匹配，对应的 `value` 写成对象形式：
 
@@ -64,7 +64,9 @@ Sqlongo 支持被其他模块调用，也支持交互式解释器（REPL）。�
 
 - `limit` 默认值为 `-1`，即无限；**若 `limit` 显式设置为 `1` ，返回值将是单个对象或 `undefined`（找不到），其余情况下（即使只有一行），返回值都将是所有符合条件的行的数组；**
 
-- `offset` 默认值为 `0`。
+- `offset` 默认值为 `0`；
+
+- `orderBy` 为排序列名，末尾可用 `+` 表示升序（默认），`-` 表示降序；不写列名时默认按各行的原始顺序 `rowid` 排序。
 
 ### 数据计数
 

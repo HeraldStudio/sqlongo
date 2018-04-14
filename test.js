@@ -30,7 +30,7 @@ const runTest = async () => {
   assert(await db.test1.find({}, 1), k => k.id === 2 && /5$/.test(k.content))
 
   silent(await db.test1.insert({ content: 'Hello, World! 3' }))
-  assert(await db.test1.find({ id: { $in: [3, 4, 5] } }), k => k.length === 2)
+  assert(await db.test1.find({ id: { $in: [3, 4, 5] } }, -1, 0, 'content-'), k => k.length === 2)
   console.log('Passed.')
 }
 
