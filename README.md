@@ -100,7 +100,7 @@ await db.todo.insert({ content: 'Have a cup of coffee' })
 
 ~~使用  `await db.raw(sql, params)` 执行参数化的原始查询，其本质是 `sqlite3.Database.prototype.all()`，因此返回值始终是一个保存结果对象的数组。~~
 
-使用全新的 ** 模板插值调用方法 ** 可进行自动参数化的查询，插入的插值将会自动变为安全的 SQL 参数：
+使用全新的 **模板插值调用** 可进行自动参数化的查询，插入的插值将会自动变为安全的 SQL 参数：
 
 ```javascript
 await db`select distinct content from test1 where id > ${ 1 }`
