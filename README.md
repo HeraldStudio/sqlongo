@@ -28,7 +28,7 @@ Sqlongo 支持被其他模块调用，也支持交互式解释器（REPL）。�
 
 - 定义表本质上是异步的 `create table if not exists` 语句；
 
-- 为了保证 SQL 安全，在每个 `db` 实例中都需要先定义表，才能对对应的表进行增删改查操作；
+- ~~为了保证 SQL 安全，在每个 `db` 实例中都需要先定义表，才能对对应的表进行增删改查操作；~~（现在打开数据库后会自动获取当前数据库所有表结构定义）
 
 - 实现细节层面上，定义表语句执行后的第一次增删改查操作开始时，若异步定义表还未完成，sqlongo 将自动先等待定义表完成，再开始相应的增删改查操作；(v1.2.0 新增特性，原有 `await db.tableName.define` API 也相应删除)
 
@@ -98,7 +98,15 @@ await db.todo.insert({ content: 'Have a cup of coffee' })
 
 ### 原始查询
 
-使用  `await db.raw(sql, params)` 执行参数化的原始查询，其本质是 `sqlite3.Database.prototype.all()`，因此返回值始终是一个保存结果对象的数组。
+~~使用  `await db.raw(sql, params)` 执行参数化的原始查询，其本质是 `sqlite3.Database.prototype.all()`，因此返回值始终是一个保存结果对象的数组。~~
+
+使用全新的 ** 模板插值调用方法 ** 可进行自动参数化的查询，插入的插值将会自动变为安全的 SQL 参数：
+
+```javascript
+await db`select distinct content from test1 where id > ${ 1 }`
+```
+
+现在版本中 `db` 与 `db.raw` 是等价的，都可以接受模板调用或参数化调用。
 
 ## 安全性说明
 

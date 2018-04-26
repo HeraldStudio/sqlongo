@@ -1,4 +1,5 @@
 const { Database } = require('sqlite3')
+const path = require('path')
 
 class AsyncDatabase extends Database {
   async run (sql, param = []) {
@@ -26,7 +27,7 @@ class AsyncDatabase extends Database {
 
 const CRITERION_KEYS = {
   $like: 'like',
-  $glob: 'glob',
+  $glob: 'GLOB',
   $gt: '>',
   $lt: '<',
   $gte: '>=',
@@ -39,7 +40,7 @@ const CRITERION_KEYS = {
 
 // 判断 key 是否为合法列名
 const filterKey = (untrustedKey, trustedObject) => {
-  let trustedKeys = Object.keys(trustedObject).concat('rowid')
+  let trustedKeys = Object.keys(trustedObject).concat(['rowid'])
   return ~trustedKeys.indexOf(untrustedKey)
 }
 
@@ -84,43 +85,54 @@ const Sqlongo = function (databaseName) {
     if (!/\.db$/.test(databaseName)) {
       databaseName += '.db'
     }
-    let path = Sqlongo.defaults.path.replace(/^(.+)\/?$/, '$1/')
-    databaseName = path + databaseName.replace(/^\//, '')
+    databaseName = path.resolve(Sqlongo.defaults.path, databaseName)
   }
   const db = new AsyncDatabase(databaseName)
-  let createTableTasks = Promise.resolve()
-  let schemas = {}
-  let proxy = new Proxy ({}, {
+  let schemas = () => {}
+  let initTask = (async () => {
+    let tables = await db.all('select tbl_name, sql from sqlite_master where type="table"')
+    await Promise.all(tables.map(async k => {
+      let { tbl_name: table, sql } = k
+      schemas[table] = /\(([\s\S]+)\)/.exec(sql)[1].split(',').map(k => {
+        let [column, ...type] = k.trim().split(/\s+/)
+        return { [column]: type.join(' ') }
+      }).reduce((a, b) => Object.assign(a, b), {})
+    }))
+  })()
+  let proxy = new Proxy (schemas, {
     set (_, table, schema) {
       if (typeof schema !== 'object') {
         throw new Error(`db.${table}: schema must be an object`)
       }
       schemas[table] = schema
 
-      createTableTasks = Promise.all([createTableTasks, db.run(`
+      initTask = Promise.all([initTask, db.run(`
         create table if not exists ${table} (
           ${Object.keys(schema).map(k => k + ' ' + schema[k]).join(', ')}
         )
       `)])
       return true
     },
+    async apply(_, thisArg, [sql, ...params]) {
+      if (Array.isArray(sql)) { // ES6 模板字面量调用
+        sql = sql.join('?')
+      } else { // 普通参数化 SQL 调用
+        params = params[0]
+      }
+      await initTask
+      return await db.all(sql, params)
+    },
     get (_, key) {
-      if (typeof key === 'symbol' || key in Object.prototype) {
+      if (typeof key === 'symbol' || key === 'inspect' || key in Object.prototype) {
         return schemas[key]
       }
-
       if (key === 'raw') {
-        return async (sql, params) => {
-          await createTableTasks
-          return await db.all(sql, params)
-        }
+        return proxy
       }
-
       let table = key
-
-      return {
+      return schemas[table] && Object.assign(schemas[table], {
         async find(criteriaObj = {}, limit = -1, offset = 0, orderBy = '') {
-          await createTableTasks
+          await initTask
           if (typeof criteriaObj !== 'object') {
             throw new Error(`find: criteria should be an object`)
           }
@@ -140,7 +152,7 @@ const Sqlongo = function (databaseName) {
           `, values.concat([limit, offset]))
         },
         async count(column = '*', criteriaObj = {}) {
-          await createTableTasks
+          await initTask
           if (typeof column === 'object') {
             criteriaObj = column
             column = '*'
@@ -162,7 +174,7 @@ const Sqlongo = function (databaseName) {
           `, values)).count
         },
         async distinct(column, criteriaObj = {}, limit = -1, offset = 0) {
-          await createTableTasks
+          await initTask
           if (typeof criteriaObj !== 'object') {
             throw new Error(`distinct: criteria should be an object`)
           }
@@ -180,7 +192,7 @@ const Sqlongo = function (databaseName) {
           `, values.concat([limit, offset]))).map(k => k[column])
         },
         async insert(row) {
-          await createTableTasks
+          await initTask
           if (typeof row !== 'object') {
             throw new Error(`insert: row should be an object`)
           }
@@ -199,7 +211,7 @@ const Sqlongo = function (databaseName) {
           `, values)
         },
         async remove(criteriaObj, limit = -1, offset = 0) {
-          await createTableTasks
+          await initTask
           if (typeof criteriaObj !== 'object') {
             throw new Error(`remove: criteria should be an object`)
           }
@@ -214,7 +226,7 @@ const Sqlongo = function (databaseName) {
           `, values.concat([limit, offset]))
         },
         async update(criteriaObj, row) {
-          await createTableTasks
+          await initTask
           if (typeof criteriaObj !== 'object') {
             throw new Error(`update: criteria should be an object`)
           }
@@ -236,7 +248,7 @@ const Sqlongo = function (databaseName) {
             update ${table} set ${operations} ${criteria}
           `, values.concat(criteriaValues))
         }
-      }
+      })
     }
   })
   return proxy
